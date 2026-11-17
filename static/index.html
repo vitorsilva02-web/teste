@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoMind AI | Diagnóstico automotivo</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1220; --panel:#121d30; --line:#263750; --text:#edf4ff; --muted:#9eb0c9; --accent:#27c3a2; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at top,#172944,var(--bg) 55%); color:var(--text); font:16px Arial,sans-serif; }
+    main { width:min(900px,92%); margin:48px auto; }
+    header { margin-bottom:28px; }
+    .tag { color:var(--accent); font-size:12px; letter-spacing:2px; font-weight:bold; }
+    h1 { font-size:clamp(32px,6vw,52px); margin:10px 0; }
+    p { color:var(--muted); line-height:1.6; }
+    .panel { background:rgba(18,29,48,.95); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:0 18px 55px #0005; }
+    label { display:block; margin:18px 0 8px; font-weight:bold; }
+    input, textarea { width:100%; padding:14px; border:1px solid var(--line); border-radius:10px; background:#0b1424; color:var(--text); font:inherit; }
+    textarea { min-height:120px; resize:vertical; }
+    button { margin-top:20px; padding:14px 20px; border:0; border-radius:10px; background:var(--accent); color:#06231d; font-weight:bold; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:wait; }
+    #result { display:none; margin-top:22px; padding:20px; background:#0b1424; border:1px solid var(--line); border-radius:12px; }
+    #result h2 { margin-top:0; }
+    li { margin:10px 0; color:var(--muted); line-height:1.5; }
+    .notice { font-size:13px; border-left:3px solid #e3ad55; padding-left:12px; }
+    footer { margin-top:22px; color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="tag">AUTOMOTIVE INTELLIGENCE</div>
+      <h1>AutoMind AI</h1>
+      <p>Uma plataforma experimental para organizar sintomas, códigos de falha e verificações técnicas automotivas.</p>
+    </header>
+    <section class="panel">
+      <h2>Novo diagnóstico</h2>
+      <form id="diagnosticForm">
+        <label for="vehicle">Veículo</label>
+        <input id="vehicle" placeholder="Ex.: Fiat Linea 1.8 2012" required>
+        <label for="symptoms">Sintomas apresentados</label>
+        <textarea id="symptoms" placeholder="Descreva o que acontece, quando ocorre e em quais condições..."></textarea>
+        <label for="codes">Códigos de falha (opcional)</label>
+        <input id="codes" placeholder="Ex.: P0301, P0420">
+        <button id="submit" type="submit">Analisar informações</button>
+      </form>
+      <div id="result" aria-live="polite"></div>
+    </section>
+    <footer>AutoMind AI • Protótipo 0.1.0 • As hipóteses são preliminares e exigem confirmação por testes.</footer>
+  </main>
+  <script>
+    const form = document.getElementById('diagnosticForm');
+    const result = document.getElementById('result');
+    const button = document.getElementById('submit');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      button.textContent = 'Analisando...';
+      result.style.display = 'block';
+      result.textContent = 'Enviando informações...';
+
+      try {
+        const response = await fetch('/diagnostico', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vehicle: document.getElementById('vehicle').value,
+            symptoms: document.getElementById('symptoms').value,
+            codes: document.getElementById('codes').value
+          })
+        });
+        const data = await response.json();
+        result.replaceChildren();
+
+        const title = document.createElement('h2');
+        title.textContent = data.status === 'incomplete' ? 'Informações incompletas' : 'Triagem inicial';
+        result.appendChild(title);
+
+        const message = document.createElement('p');
+        message.textContent = data.message || 'Não foi possível concluir a análise.';
+        result.appendChild(message);
+
+        if (data.possible_checks) {
+          const list = document.createElement('ul');
+          data.possible_checks.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            list.appendChild(li);
+          });
+          result.appendChild(list);
+        }
+        if (data.important) {
+          const note = document.createElement('p');
+          note.className = 'notice';
+          note.textContent = data.important;
+          result.appendChild(note);
+        }
+      } catch (error) {
+        result.textContent = 'Não foi possível acessar o servidor. Verifique se a aplicação está em execução.';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Analisar informações';
+      }
+    });
+  </script>
+</body>
+</html>
